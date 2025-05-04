@@ -15,8 +15,8 @@ local outlawCampFound = false
 local outlawCampPosition = nil
 local closestGun = nil
 local closestChair = nil
-local closestDistanceGun = math.huge
-local closestDistanceChair = math.huge
+local closestGunDistance = math.huge
+local closestChairDistance = math.huge
 
 -- Notification loop
 spawn(function()
@@ -49,51 +49,52 @@ for z = startZ, endZ, stepZ do
             outlawCampPosition = outlawCamp.PrimaryPart.Position
             print("OutlawCamp found at:", outlawCampPosition)
 
-            -- Find the closest MaximGun
+            -- Find the closest MaximGun first
             for _, item in ipairs(outlawCamp:GetDescendants()) do
-                if item.Name == "MaximGun" and item.PrimaryPart then
+                if item:IsA("Model") and item.Name == "MaximGun" and item.PrimaryPart then
                     local distance = (humanoidRootPart.Position - item.PrimaryPart.Position).Magnitude
-                    if distance < closestDistanceGun then
+                    if distance < closestGunDistance then
                         closestGun = item
-                        closestDistanceGun = distance
+                        closestGunDistance = distance
                     end
                 end
             end
 
-            -- Chair is fallback
-            for _, item in ipairs(outlawCamp:GetDescendants()) do
-                if item.Name == "Chair" then
-                    local seat = item:FindFirstChild("Seat")
+            -- Find the closest Chair as a fallback
+            for _, chair in ipairs(outlawCamp:GetDescendants()) do
+                if chair.Name == "Chair" then
+                    local seat = chair:FindFirstChild("Seat")
                     if seat then
                         local distance = (humanoidRootPart.Position - seat.Position).Magnitude
-                        if distance < closestDistanceChair then
+                        if distance < closestChairDistance then
                             closestChair = seat
-                            closestDistanceChair = distance
+                            closestChairDistance = distance
                         end
                     end
                 end
             end
 
-            -- Teleport 10 times while trying to sit
+            -- Teleport and attempt to sit
             for i = 1, teleportCount do
                 humanoidRootPart.CFrame = CFrame.new(outlawCampPosition)
+                task.wait(teleportDelay) -- Wait before sitting
 
                 if closestGun then
                     local seat = closestGun:FindFirstChild("VehicleSeat")
-                    if seat then
-                        character:PivotTo(seat.CFrame)
+                    if seat and seat.Parent then
+                        humanoidRootPart.CFrame = seat.CFrame * CFrame.new(0, 1, 0) -- Align with seat
                         seat:Sit(humanoid)
-                        print("Seated on MaximGun.")
-                        break -- Stops teleport loop if seated successfully
+                        print("Seated on the closest MaximGun.")
+                        task.wait(1) -- Allow sit action to complete
+                        if humanoid.SeatPart == seat then break end -- Stop teleporting if seated successfully
                     end
                 elseif closestChair then
-                    character:PivotTo(closestChair.CFrame)
+                    humanoidRootPart.CFrame = closestChair.CFrame * CFrame.new(0, 1, 0) -- Align with seat
                     closestChair:Sit(humanoid)
-                    print("No MaximGun found, seated on Chair instead.")
-                    break -- Stops teleport loop if seated successfully
+                    print("No MaximGun found, seated on the closest Chair instead.")
+                    task.wait(1) -- Allow sit action to complete
+                    if humanoid.SeatPart == closestChair then break end -- Stop teleporting if seated successfully
                 end
-
-                task.wait(teleportDelay)
             end
         end
     end
