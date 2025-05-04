@@ -9,7 +9,7 @@ local startZ = 30000
 local endZ = -49032.99
 local stepZ = -2000
 local duration = 0.5
-local teleportCount = 10 -- TP 10 times
+local teleportCount = 1000 -- TP 1000 times
 local teleportDelay = 0.1 -- 0.1-second delay between TPs
 local outlawCampFound = false
 local outlawCampPosition = nil
@@ -31,31 +31,6 @@ spawn(function()
     end
 end)
 
--- Find the closest MaximGun in the workspace
-for _, item in ipairs(workspace:GetDescendants()) do
-    if item:IsA("Model") and item.Name == "MaximGun" and item.PrimaryPart then
-        local distance = (humanoidRootPart.Position - item.PrimaryPart.Position).Magnitude
-        if distance < closestGunDistance then
-            closestGun = item
-            closestGunDistance = distance
-        end
-    end
-end
-
--- Find the closest Chair in the workspace (as fallback)
-for _, chair in ipairs(workspace:GetDescendants()) do
-    if chair.Name == "Chair" then
-        local seat = chair:FindFirstChild("Seat")
-        if seat then
-            local distance = (humanoidRootPart.Position - seat.Position).Magnitude
-            if distance < closestChairDistance then
-                closestChair = seat
-                closestChairDistance = distance
-            end
-        end
-    end
-end
-
 -- Tween search for OutlawCamp
 for z = startZ, endZ, stepZ do
     if outlawCampFound then break end
@@ -73,6 +48,34 @@ for z = startZ, endZ, stepZ do
             outlawCampFound = true
             outlawCampPosition = outlawCamp.PrimaryPart.Position
             print("OutlawCamp found at:", outlawCampPosition)
+
+            -- Find closest MaximGun in RuntimeItems
+            local runtimeItems = workspace:FindFirstChild("RuntimeItems")
+            if runtimeItems then
+                for _, item in ipairs(runtimeItems:GetDescendants()) do
+                    if item:IsA("Model") and item.Name == "MaximGun" and item.PrimaryPart then
+                        local distance = (outlawCampPosition - item.PrimaryPart.Position).Magnitude
+                        if distance < closestGunDistance then
+                            closestGun = item
+                            closestGunDistance = distance
+                        end
+                    end
+                end
+
+                -- Find closest Chair within 600 units in RuntimeItems (fallback)
+                for _, chair in ipairs(runtimeItems:GetDescendants()) do
+                    if chair.Name == "Chair" then
+                        local seat = chair:FindFirstChild("Seat")
+                        if seat then
+                            local distance = (outlawCampPosition - seat.Position).Magnitude
+                            if distance < closestChairDistance and distance <= 600 then -- Only check chairs within 600 units
+                                closestChair = seat
+                                closestChairDistance = distance
+                            end
+                        end
+                    end
+                end
+            end
 
             -- Teleport and attempt to sit
             for i = 1, teleportCount do
